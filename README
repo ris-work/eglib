@@ -1,3 +1,8 @@
+This implements some missing functions/object-esque things that are
+missing to compile libgdiplus with eglib (MIT) instead of glib (LGPL).
+
+Copyright (c) 2025 Rishikeshan Sulochana/Lavakumar
+The files are under the MIT License
 
 The purpose of eglib is to be an X11-licensed subset of glib that can
 be used with Mono when the Mono runtime is explicitly relicensed under
