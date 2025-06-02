@@ -1,5 +1,6 @@
 This implements some missing functions/object-esque things that are
 missing to compile libgdiplus with eglib (MIT) instead of glib (LGPL).
+Might find it helpful for static linking or embedded applications.
 
 Copyright (c) 2025 Rishikeshan Sulochana/Lavakumar
 The files are under the MIT License
