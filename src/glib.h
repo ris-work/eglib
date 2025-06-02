@@ -1,6 +1,9 @@
 #ifndef __GLIB_H
 #define __GLIB_H
+#define G_MININT16 INT_MIN
+#define G_MAXINT16 INT_MAX
 
+#include <float.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +11,113 @@
 #include <stddef.h>
 #include <ctype.h>
 #include <limits.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
+
+typedef struct {
+#ifdef _WIN32
+    CRITICAL_SECTION cs;
+#else
+    pthread_mutex_t mutex;
+#endif
+} GMutex;
+
+static inline void g_mutex_init(GMutex* m) {
+#ifdef _WIN32
+    InitializeCriticalSection(&m->cs);
+#else
+    pthread_mutex_init(&m->mutex, NULL);
+#endif
+}
+
+static inline void g_mutex_destroy(GMutex* m) {
+#ifdef _WIN32
+    DeleteCriticalSection(&m->cs);
+#else
+    pthread_mutex_destroy(&m->mutex);
+#endif
+}
+
+static inline void g_mutex_lock(GMutex* m) {
+#ifdef _WIN32
+    EnterCriticalSection(&m->cs);
+#else
+    pthread_mutex_lock(&m->mutex);
+#endif
+}
+
+static inline void g_mutex_unlock(GMutex* m) {
+#ifdef _WIN32
+    LeaveCriticalSection(&m->cs);
+#else
+    pthread_mutex_unlock(&m->mutex);
+#endif
+}
+#include <stdlib.h>
+
+#ifdef __STDC_VERSION__
+  #if __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_ATOMICS__)
+    #include <stdatomic.h>
+    #define USE_C11_ATOMICS 1
+  #endif
+#endif
+
+typedef unsigned long gsize;
+typedef int gboolean;
+#define TRUE  1
+#define FALSE 0
+
+#ifdef USE_C11_ATOMICS
+
+static inline gboolean g_once_init_enter(void *location) {
+    _Atomic gsize *atomic_location = (_Atomic gsize *)location;
+    gsize expected = 0;
+    /* Attempt to change the value from 0 to 1.
+       If successful, the current thread proceeds with initialization. */
+    if (atomic_compare_exchange_strong(atomic_location, &expected, 1))
+        return TRUE;
+    else {
+        /* If another thread is initializing, wait until it completes. */
+        while (atomic_load(atomic_location) == 1)
+            ;  /* busy-wait */
+        return FALSE;
+    }
+}
+
+static inline void g_once_init_leave(void *location, gsize result) {
+    _Atomic gsize *atomic_location = (_Atomic gsize *)location;
+    atomic_store(atomic_location, result);
+}
+
+#else
+
+/* Fallback stub – note: this is not thread-safe.
+   It is trivial and should be replaced with an appropriate mechanism if needed. */
+static inline gboolean g_once_init_enter(void *location) {
+    gsize *l = (gsize *)location;
+    if (*l == 0) {
+        *l = 1;  /* Mark initialization in progress */
+        return TRUE;
+    }
+    while (*l == 1)
+        ;  /* Busy wait until initialization completes */
+    return FALSE;
+}
+
+static inline void g_once_init_leave(void *location, gsize result) {
+    *((gsize *)location) = result;
+}
+
+#endif
+
+static inline long long g_ascii_strtoll(const char *nptr, char **endptr, int base) {
+    return strtoll(nptr, endptr, base);
+}
+
+
 
 #ifdef _MSC_VER
 #pragma include_alias(<eglib-config.h>, <eglib-config.hw>)
